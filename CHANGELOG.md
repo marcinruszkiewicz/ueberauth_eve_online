@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2024-12-27
+
+### Fixed
+- **CRITICAL BUG FIX**: Fixed "invalid_grant" OAuth2 error by including redirect_uri in token exchange
+  - Added conditional redirect_uri parameter to token exchange when `send_redirect_uri` option is enabled
+  - EVE SSO requires matching redirect_uri between authorization and token exchange requests per OAuth2 RFC 6749
+  - Previously, redirect_uri was sent during authorization but missing during token exchange
+  - This resolves authentication failures where users would get "invalid_grant" errors after successful authorization
+  - Maintains backward compatibility - only includes redirect_uri when `send_redirect_uri` option is true (default)
+
+### Technical Details
+- Enhanced `exchange_code_for_token/2` function to respect `send_redirect_uri` strategy option
+- When `send_redirect_uri: true` (default), includes `redirect_uri: callback_url(conn)` in token exchange params
+- When `send_redirect_uri: false`, excludes redirect_uri from token exchange (preserves existing behavior)
+- Fixes OAuth2 compliance issue with EVE SSO's strict redirect_uri validation
+
+### Security
+- Improves OAuth2 flow compliance with RFC 6749 Section 4.1.3
+- No security weakening - redirect_uri validation strengthens CSRF protection
+
 ## [1.0.1] - 2024-12-27
 
 ### Fixed

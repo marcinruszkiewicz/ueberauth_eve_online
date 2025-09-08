@@ -227,9 +227,16 @@ defmodule Ueberauth.Strategy.EVESSO do
   # Exchange authorization code for access token
   defp exchange_code_for_token(conn, code) do
     module = option(conn, :oauth2_module)
+    send_redirect_uri = Keyword.get(options(conn), :send_redirect_uri, true)
+
+    params = if send_redirect_uri do
+      [code: code, redirect_uri: callback_url(conn)]
+    else
+      [code: code]
+    end
 
     try do
-      token = apply(module, :get_token!, [[code: code]])
+      token = apply(module, :get_token!, [params])
 
       if token.access_token == nil do
         set_errors!(conn, [

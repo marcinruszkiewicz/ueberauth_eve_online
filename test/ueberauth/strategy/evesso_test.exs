@@ -15,6 +15,9 @@ defmodule Ueberauth.Strategy.EVESSOTest do
     end
 
     def get_token!(opts) do
+      # Store the opts for verification in tests
+      Process.put(:last_token_opts, opts)
+      
       case Keyword.get(opts, :code) do
         "valid_code" ->
           %OAuth2.AccessToken{
@@ -495,6 +498,62 @@ defmodule Ueberauth.Strategy.EVESSOTest do
       assert %Extra{} = result
       assert result.raw_info.token == token
       assert result.raw_info.user == user
+    end
+  end
+
+  describe "token exchange redirect_uri handling" do
+    test "includes redirect_uri in token exchange when send_redirect_uri is true", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code")
+        |> Map.put(:params, %{"code" => "valid_code"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth, send_redirect_uri: true]
+        )
+
+      EVESSO.handle_callback!(conn)
+
+      # Check that redirect_uri was included in the token exchange params
+      token_opts = Process.get(:last_token_opts)
+      assert Keyword.has_key?(token_opts, :redirect_uri)
+      assert Keyword.get(token_opts, :code) == "valid_code"
+    end
+
+    test "excludes redirect_uri from token exchange when send_redirect_uri is false", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code")
+        |> Map.put(:params, %{"code" => "valid_code"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth, send_redirect_uri: false]
+        )
+
+      EVESSO.handle_callback!(conn)
+
+      # Check that redirect_uri was NOT included in the token exchange params
+      token_opts = Process.get(:last_token_opts)
+      refute Keyword.has_key?(token_opts, :redirect_uri)
+      assert Keyword.get(token_opts, :code) == "valid_code"
+    end
+
+    test "includes redirect_uri by default (when send_redirect_uri not specified)", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code")
+        |> Map.put(:params, %{"code" => "valid_code"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth]
+        )
+
+      EVESSO.handle_callback!(conn)
+
+      # Check that redirect_uri was included (default behavior)
+      token_opts = Process.get(:last_token_opts)
+      assert Keyword.has_key?(token_opts, :redirect_uri)
+      assert Keyword.get(token_opts, :code) == "valid_code"
     end
   end
 end
