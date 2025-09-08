@@ -198,6 +198,104 @@ defmodule Ueberauth.Strategy.EVESSOTest do
                "Invalid state parameter. Possible CSRF attack."
     end
 
+    test "validates state parameter with correct state", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code&state=correct_state")
+        |> Map.put(:params, %{"code" => "valid_code", "state" => "correct_state"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_state_param, "correct_state")
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth]
+        )
+
+      result = EVESSO.handle_callback!(conn)
+
+      assert result.private[:evesso_token]
+      assert result.private[:evesso_user]
+      refute result.assigns[:ueberauth_failure]
+    end
+
+    test "falls back to cookie when ueberauth_state_param is nil", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code&state=cookie_state")
+        |> Map.put(:params, %{"code" => "valid_code", "state" => "cookie_state"})
+        |> Map.put(:req_cookies, %{"ueberauth.state_param" => "cookie_state"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_state_param, nil)
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth]
+        )
+
+      result = EVESSO.handle_callback!(conn)
+
+      assert result.private[:evesso_token]
+      assert result.private[:evesso_user]
+      refute result.assigns[:ueberauth_failure]
+    end
+
+    test "fails when state param doesn't match cookie fallback", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code&state=wrong_state")
+        |> Map.put(:params, %{"code" => "valid_code", "state" => "wrong_state"})
+        |> Map.put(:req_cookies, %{"ueberauth.state_param" => "cookie_state"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_state_param, nil)
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth]
+        )
+
+      result = EVESSO.handle_callback!(conn)
+
+      assert result.assigns[:ueberauth_failure]
+      failure = result.assigns[:ueberauth_failure]
+
+      assert failure.errors |> List.first() |> Map.get(:message) ==
+               "Invalid state parameter. Possible CSRF attack."
+    end
+
+    test "prefers private state param over cookie when both present", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code&state=private_state")
+        |> Map.put(:params, %{"code" => "valid_code", "state" => "private_state"})
+        |> Map.put(:req_cookies, %{"ueberauth.state_param" => "cookie_state"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_state_param, "private_state")
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth]
+        )
+
+      result = EVESSO.handle_callback!(conn)
+
+      assert result.private[:evesso_token]
+      assert result.private[:evesso_user]
+      refute result.assigns[:ueberauth_failure]
+    end
+
+    test "fails when no state source is available", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code&state=some_state")
+        |> Map.put(:params, %{"code" => "valid_code", "state" => "some_state"})
+        |> Map.put(:req_cookies, %{})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_state_param, nil)
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth]
+        )
+
+      result = EVESSO.handle_callback!(conn)
+
+      assert result.assigns[:ueberauth_failure]
+      failure = result.assigns[:ueberauth_failure]
+
+      assert failure.errors |> List.first() |> Map.get(:message) ==
+               "Invalid state parameter. Possible CSRF attack."
+    end
+
     test "handles OAuth2 errors gracefully", %{} do
       # Mock OAuth module that raises OAuth2.Error
       defmodule MockOAuthWithError do

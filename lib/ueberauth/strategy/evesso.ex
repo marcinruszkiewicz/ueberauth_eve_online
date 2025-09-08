@@ -101,7 +101,8 @@ defmodule Ueberauth.Strategy.EVESSO do
   """
   @spec handle_callback!(Plug.Conn.t()) :: Plug.Conn.t()
   def handle_callback!(%Plug.Conn{params: %{"code" => code, "state" => state}} = conn) do
-    expected_state = conn.private[:ueberauth_state_param]
+    # Get expected state from cookie (fix for ueberauth state cookie bug)
+    expected_state = conn.private[:ueberauth_state_param] || Map.get(conn.req_cookies, "ueberauth.state_param")
 
     if state != expected_state do
       set_errors!(conn, [error("invalid_state", "Invalid state parameter. Possible CSRF attack.")])
