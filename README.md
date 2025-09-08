@@ -74,6 +74,31 @@ EVE Online SSO OAuth2 strategy for Überauth
 
 8. Your controller needs to implement callbacks to deal with `Ueberauth.Auth` and `Ueberauth.Failure` responses.
 
+## HTTPS Configuration
+
+If your application runs behind a proxy (nginx, load balancer) that terminates SSL, you may encounter redirect URI mismatches where EVE SSO receives `http://` URLs instead of `https://` URLs. Here are three ways to fix this:
+
+### Option 1: Configure callback scheme
+```elixir
+config :ueberauth, Ueberauth,
+  providers: [
+    evesso: {Ueberauth.Strategy.EVESSO, [callback_scheme: "https"]}
+  ]
+```
+
+### Option 2: Set explicit callback URL
+```elixir
+config :ueberauth, Ueberauth,
+  providers: [
+    evesso: {Ueberauth.Strategy.EVESSO, [callback_url: "https://your-domain.com/auth/evesso/callback"]}
+  ]
+```
+
+### Option 3: Configure X-Forwarded-Proto header
+Configure your proxy to set the `X-Forwarded-Proto: https` header, which Ueberauth will automatically detect.
+
+**Note**: Make sure your EVE SSO application is configured with the same HTTPS callback URL in the [EVE Developers portal](https://developers.eveonline.com/).
+
 ## Calling
 
 Depending on the configured url you can initiate the request through:

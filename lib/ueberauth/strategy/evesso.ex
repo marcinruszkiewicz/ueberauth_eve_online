@@ -60,6 +60,25 @@ defmodule Ueberauth.Strategy.EVESSO do
 
   Default is empty ("") which doesn't grant any extra permissions beyond public endpoints but enables you to verify character ownership.
   Scopes are provided as a space-separated list.
+
+  ### HTTPS Configuration
+
+  If your application runs behind a proxy (nginx, load balancer) that terminates SSL, you may need to configure
+  the callback URL scheme to use HTTPS:
+
+      config :ueberauth, Ueberauth,
+        providers: [
+          evesso: {Ueberauth.Strategy.EVESSO, [callback_scheme: "https"]}
+        ]
+
+  You can also set a specific callback URL:
+
+      config :ueberauth, Ueberauth,
+        providers: [
+          evesso: {Ueberauth.Strategy.EVESSO, [callback_url: "https://your-domain.com/auth/evesso/callback"]}
+        ]
+
+  Or configure your web server to set the `X-Forwarded-Proto` header to `https` for proper scheme detection.
   """
   use Ueberauth.Strategy,
     uid_field: :owner_hash,
@@ -81,6 +100,9 @@ defmodule Ueberauth.Strategy.EVESSO do
   def handle_request!(conn) do
     scopes = conn.params["scope"] || option(conn, :default_scope)
     send_redirect_uri = Keyword.get(options(conn), :send_redirect_uri, true)
+
+    # Apply callback configuration for HTTPS support
+    conn = apply_callback_config(conn)
 
     opts =
       if send_redirect_uri do
@@ -229,6 +251,9 @@ defmodule Ueberauth.Strategy.EVESSO do
     module = option(conn, :oauth2_module)
     send_redirect_uri = Keyword.get(options(conn), :send_redirect_uri, true)
 
+    # Apply callback configuration for HTTPS support
+    conn = apply_callback_config(conn)
+
     params = if send_redirect_uri do
       [code: code, redirect_uri: callback_url(conn)]
     else
@@ -297,5 +322,30 @@ defmodule Ueberauth.Strategy.EVESSO do
 
   defp option(conn, key) do
     Keyword.get(options(conn), key, Keyword.get(default_options(), key))
+  end
+
+  # Apply callback configuration options to support HTTPS
+  defp apply_callback_config(conn) do
+    options = options(conn)
+    
+    # Get existing request options
+    existing_opts = conn.private[:ueberauth_request_options] || []
+    
+    # Add callback configuration to request options
+    updated_opts = existing_opts
+    |> maybe_put_callback_url_opt(Keyword.get(options, :callback_url))
+    |> maybe_put_callback_scheme_opt(Keyword.get(options, :callback_scheme))
+    
+    put_private(conn, :ueberauth_request_options, updated_opts)
+  end
+
+  defp maybe_put_callback_url_opt(opts, nil), do: opts
+  defp maybe_put_callback_url_opt(opts, callback_url) do
+    Keyword.put(opts, :callback_url, callback_url)
+  end
+
+  defp maybe_put_callback_scheme_opt(opts, nil), do: opts
+  defp maybe_put_callback_scheme_opt(opts, callback_scheme) do
+    Keyword.put(opts, :callback_scheme, callback_scheme)
   end
 end

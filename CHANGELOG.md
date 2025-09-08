@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2024-12-27
+
+### Added
+- **HTTPS Configuration Support**: Added configuration options to handle HTTPS redirect URIs
+  - New `callback_scheme` option to force HTTPS scheme for callback URLs
+  - New `callback_url` option to set explicit callback URL
+  - Support for `X-Forwarded-Proto` header detection (existing Ueberauth feature)
+  - Comprehensive documentation for HTTPS configuration in both module docs and README
+
+### Fixed
+- **Redirect URI Mismatch**: Fixed "invalid_request" errors when applications run behind SSL-terminating proxies
+  - Addresses scenario where proxy terminates SSL, causing callback URLs to use HTTP instead of HTTPS
+  - EVE SSO requires exact match between configured redirect URI and OAuth request redirect URI
+  - Provides multiple configuration options to ensure HTTPS callback URLs are generated correctly
+
+### Technical Details
+- Enhanced `handle_request!/1` and `exchange_code_for_token/2` to apply callback configuration
+- Added `apply_callback_config/1` helper function to set callback URL and scheme from strategy options
+- Maintains backward compatibility - no configuration required for applications not behind proxies
+- Added comprehensive test coverage for HTTPS callback configuration scenarios
+
+### Documentation
+- Updated module documentation with detailed HTTPS configuration examples
+- Updated README with step-by-step HTTPS setup instructions
+- Added note about configuring EVE SSO application with matching HTTPS callback URL
+
 ## [1.0.2] - 2024-12-27
 
 ### Fixed

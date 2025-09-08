@@ -11,7 +11,17 @@ defmodule Ueberauth.Strategy.EVESSOTest do
     def authorize_url!(opts) do
       params = Keyword.get(opts, :scope, "")
       state = Keyword.get(opts, :state, "")
-      "https://login.eveonline.com/v2/oauth/authorize?scope=#{params}&state=#{state}"
+      redirect_uri = Keyword.get(opts, :redirect_uri, "")
+      
+      # Build URL with all parameters
+      url = "https://login.eveonline.com/v2/oauth/authorize?scope=#{params}&state=#{state}"
+      
+      if redirect_uri != "" do
+        encoded_redirect_uri = URI.encode_www_form(redirect_uri)
+        url <> "&redirect_uri=#{encoded_redirect_uri}"
+      else
+        url
+      end
     end
 
     def get_token!(opts) do
@@ -554,6 +564,65 @@ defmodule Ueberauth.Strategy.EVESSOTest do
       token_opts = Process.get(:last_token_opts)
       assert Keyword.has_key?(token_opts, :redirect_uri)
       assert Keyword.get(token_opts, :code) == "valid_code"
+    end
+  end
+
+  describe "HTTPS callback configuration" do
+    test "uses https scheme when callback_scheme is configured", %{} do
+      conn =
+        conn(:get, "/auth/evesso")
+        |> Map.put(:params, %{})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_state_param, "test_state")
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth, callback_scheme: "https"]
+        )
+
+      result = EVESSO.handle_request!(conn)
+
+      assert result.status == 302
+      redirect_url = get_resp_header(result, "location") |> hd()
+      assert redirect_url =~ "https%3A%2F%2F"
+      assert redirect_url =~ "redirect_uri="
+    end
+
+    test "uses explicit callback_url when configured", %{} do
+      conn =
+        conn(:get, "/auth/evesso")
+        |> Map.put(:params, %{})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_state_param, "test_state")
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth, callback_url: "https://example.com/auth/evesso/callback"]
+        )
+
+      result = EVESSO.handle_request!(conn)
+
+      assert result.status == 302
+      redirect_url = get_resp_header(result, "location") |> hd()
+      assert redirect_url =~ "https%3A%2F%2Fexample.com%2Fauth%2Fevesso%2Fcallback"
+      assert redirect_url =~ "redirect_uri="
+    end
+
+    test "includes https redirect_uri in token exchange when callback_scheme configured", %{} do
+      conn =
+        conn(:get, "/auth/evesso/callback?code=valid_code")
+        |> Map.put(:params, %{"code" => "valid_code"})
+        |> init_test_session(%{})
+        |> put_private(:ueberauth_request_options,
+          oauth2_module: MockOAuth,
+          options: [oauth2_module: MockOAuth, callback_scheme: "https"]
+        )
+
+      EVESSO.handle_callback!(conn)
+
+      # Check that https redirect_uri was included in the token exchange params
+      token_opts = Process.get(:last_token_opts)
+      assert Keyword.has_key?(token_opts, :redirect_uri)
+      redirect_uri = Keyword.get(token_opts, :redirect_uri)
+      assert String.starts_with?(redirect_uri, "https://")
     end
   end
 end
