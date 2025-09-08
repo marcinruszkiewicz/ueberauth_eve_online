@@ -328,8 +328,15 @@ defmodule Ueberauth.Strategy.EVESSO do
   defp apply_callback_config(conn) do
     options = options(conn)
     
-    # Get existing request options
-    existing_opts = conn.private[:ueberauth_request_options] || []
+    # Get existing request options - can be either a map (real Ueberauth) or keyword list (tests)
+    existing_opts = conn.private[:ueberauth_request_options]
+    
+    # Handle different data structures from Ueberauth vs tests
+    existing_opts = case existing_opts do
+      nil -> %{}  # Default to map for real usage
+      opts when is_list(opts) -> opts  # Keep as keyword list for tests
+      opts when is_map(opts) -> opts   # Keep as map for real usage
+    end
     
     # Add callback configuration to request options
     updated_opts = existing_opts
@@ -340,12 +347,18 @@ defmodule Ueberauth.Strategy.EVESSO do
   end
 
   defp maybe_put_callback_url_opt(opts, nil), do: opts
-  defp maybe_put_callback_url_opt(opts, callback_url) do
+  defp maybe_put_callback_url_opt(opts, callback_url) when is_map(opts) do
+    Map.put(opts, :callback_url, callback_url)
+  end
+  defp maybe_put_callback_url_opt(opts, callback_url) when is_list(opts) do
     Keyword.put(opts, :callback_url, callback_url)
   end
 
   defp maybe_put_callback_scheme_opt(opts, nil), do: opts
-  defp maybe_put_callback_scheme_opt(opts, callback_scheme) do
+  defp maybe_put_callback_scheme_opt(opts, callback_scheme) when is_map(opts) do
+    Map.put(opts, :callback_scheme, callback_scheme)
+  end
+  defp maybe_put_callback_scheme_opt(opts, callback_scheme) when is_list(opts) do
     Keyword.put(opts, :callback_scheme, callback_scheme)
   end
 end

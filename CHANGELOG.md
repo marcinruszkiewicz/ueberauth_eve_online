@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2024-12-27
+
+### Fixed
+- **CRITICAL BUG FIX**: Fixed `FunctionClauseError` in `Keyword.put/3` when applying callback configuration
+  - Issue occurred because Ueberauth sets `ueberauth_request_options` as a map/struct, not a keyword list
+  - Updated `apply_callback_config/1` to handle both map (production) and keyword list (test) data structures
+  - Added proper pattern matching and guards to use `Map.put/3` for maps and `Keyword.put/3` for lists
+  - Maintains backward compatibility and correct functionality in all scenarios
+
+### Technical Details
+- Enhanced `maybe_put_callback_url_opt/2` and `maybe_put_callback_scheme_opt/2` with pattern matching
+- Added proper type checking to handle different data structures gracefully
+- Fixed default value handling for missing `ueberauth_request_options`
+
 ## [1.0.3] - 2024-12-27
 
 ### Added
