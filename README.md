@@ -1,4 +1,7 @@
-# Überauth EVE Online
+# Überauth EVE Online [![Hex Version](https://img.shields.io/hexpm/v/ueberauth_eve_online.svg)](https://hex.pm/packages/ueberauth_eve_online) [![Hex Docs](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/ueberauth_eve_online/) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/marcinruszkiewicz/ueberauth_eve_online/ci.yml)
+
+
+A blazing fast JSON parser and generator in pure Elixir.
 
 EVE Online SSO OAuth2 strategy for Überauth
 
