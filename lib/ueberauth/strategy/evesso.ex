@@ -124,12 +124,13 @@ defmodule Ueberauth.Strategy.EVESSO do
   @spec handle_callback!(Plug.Conn.t()) :: Plug.Conn.t()
   def handle_callback!(%Plug.Conn{params: %{"code" => code, "state" => state}} = conn) do
     # Get expected state from cookie (fix for ueberauth state cookie bug)
-    expected_state = conn.private[:ueberauth_state_param] || Map.get(conn.req_cookies, "ueberauth.state_param")
+    expected_state =
+      conn.private[:ueberauth_state_param] || Map.get(conn.req_cookies, "ueberauth.state_param")
 
-    if state != expected_state do
-      set_errors!(conn, [error("invalid_state", "Invalid state parameter. Possible CSRF attack.")])
-    else
+    if state == expected_state do
       exchange_code_for_token(conn, code)
+    else
+      set_errors!(conn, [error("invalid_state", "Invalid state parameter. Possible CSRF attack.")])
     end
   end
 
@@ -254,11 +255,12 @@ defmodule Ueberauth.Strategy.EVESSO do
     # Apply callback configuration for HTTPS support
     conn = apply_callback_config(conn)
 
-    params = if send_redirect_uri do
-      [code: code, redirect_uri: callback_url(conn)]
-    else
-      [code: code]
-    end
+    params =
+      if send_redirect_uri do
+        [code: code, redirect_uri: callback_url(conn)]
+      else
+        [code: code]
+      end
 
     try do
       token = apply(module, :get_token!, [params])
@@ -327,37 +329,46 @@ defmodule Ueberauth.Strategy.EVESSO do
   # Apply callback configuration options to support HTTPS
   defp apply_callback_config(conn) do
     options = options(conn)
-    
+
     # Get existing request options - can be either a map (real Ueberauth) or keyword list (tests)
     existing_opts = conn.private[:ueberauth_request_options]
-    
+
     # Handle different data structures from Ueberauth vs tests
-    existing_opts = case existing_opts do
-      nil -> %{}  # Default to map for real usage
-      opts when is_list(opts) -> opts  # Keep as keyword list for tests
-      opts when is_map(opts) -> opts   # Keep as map for real usage
-    end
-    
+    existing_opts =
+      case existing_opts do
+        # Default to map for real usage
+        nil -> %{}
+        # Keep as keyword list for tests
+        opts when is_list(opts) -> opts
+        # Keep as map for real usage
+        opts when is_map(opts) -> opts
+      end
+
     # Add callback configuration to request options
-    updated_opts = existing_opts
-    |> maybe_put_callback_url_opt(Keyword.get(options, :callback_url))
-    |> maybe_put_callback_scheme_opt(Keyword.get(options, :callback_scheme))
-    
+    updated_opts =
+      existing_opts
+      |> maybe_put_callback_url_opt(Keyword.get(options, :callback_url))
+      |> maybe_put_callback_scheme_opt(Keyword.get(options, :callback_scheme))
+
     put_private(conn, :ueberauth_request_options, updated_opts)
   end
 
   defp maybe_put_callback_url_opt(opts, nil), do: opts
+
   defp maybe_put_callback_url_opt(opts, callback_url) when is_map(opts) do
     Map.put(opts, :callback_url, callback_url)
   end
+
   defp maybe_put_callback_url_opt(opts, callback_url) when is_list(opts) do
     Keyword.put(opts, :callback_url, callback_url)
   end
 
   defp maybe_put_callback_scheme_opt(opts, nil), do: opts
+
   defp maybe_put_callback_scheme_opt(opts, callback_scheme) when is_map(opts) do
     Map.put(opts, :callback_scheme, callback_scheme)
   end
+
   defp maybe_put_callback_scheme_opt(opts, callback_scheme) when is_list(opts) do
     Keyword.put(opts, :callback_scheme, callback_scheme)
   end

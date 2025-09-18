@@ -53,7 +53,7 @@ defmodule Ueberauth.Strategy.EVESSO.OAuth do
   @spec authorize_url!(keyword(), keyword()) :: String.t()
   def authorize_url!(params \\ [], opts \\ []) do
     opts
-    |> client
+    |> client()
     |> OAuth2.Client.authorize_url!(params)
   end
 
@@ -65,7 +65,7 @@ defmodule Ueberauth.Strategy.EVESSO.OAuth do
   @spec get(OAuth2.AccessToken.t(), String.t(), keyword(), keyword()) :: OAuth2.Response.t()
   def get(token, url, headers \\ [], opts \\ []) do
     [token: token]
-    |> client
+    |> client()
     |> OAuth2.Client.get(url, headers, opts)
   end
 
@@ -201,7 +201,7 @@ defmodule Ueberauth.Strategy.EVESSO.OAuth do
   end
 
   defp check_config_key_exists(config, key) when is_list(config) do
-    unless Keyword.has_key?(config, key) do
+    if !Keyword.has_key?(config, key) do
       raise "#{inspect(key)} missing from config :ueberauth, Ueberauth.Strategy.EVESSO"
     end
 

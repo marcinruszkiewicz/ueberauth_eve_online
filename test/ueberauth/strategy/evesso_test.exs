@@ -1,10 +1,11 @@
 defmodule Ueberauth.Strategy.EVESSOTest do
   use ExUnit.Case, async: true
-  import Plug.Test
-  import Plug.Conn
 
-  alias Ueberauth.Strategy.EVESSO
+  import Plug.Conn
+  import Plug.Test
+
   alias Ueberauth.Auth.{Info, Credentials, Extra}
+  alias Ueberauth.Strategy.EVESSO
 
   # Mock modules for testing
   defmodule MockOAuth do
@@ -12,22 +13,22 @@ defmodule Ueberauth.Strategy.EVESSOTest do
       params = Keyword.get(opts, :scope, "")
       state = Keyword.get(opts, :state, "")
       redirect_uri = Keyword.get(opts, :redirect_uri, "")
-      
+
       # Build URL with all parameters
       url = "https://login.eveonline.com/v2/oauth/authorize?scope=#{params}&state=#{state}"
-      
-      if redirect_uri != "" do
+
+      if redirect_uri == "" do
+        url
+      else
         encoded_redirect_uri = URI.encode_www_form(redirect_uri)
         url <> "&redirect_uri=#{encoded_redirect_uri}"
-      else
-        url
       end
     end
 
     def get_token!(opts) do
       # Store the opts for verification in tests
       Process.put(:last_token_opts, opts)
-      
+
       case Keyword.get(opts, :code) do
         "valid_code" ->
           %OAuth2.AccessToken{
@@ -595,7 +596,10 @@ defmodule Ueberauth.Strategy.EVESSOTest do
         |> put_private(:ueberauth_state_param, "test_state")
         |> put_private(:ueberauth_request_options,
           oauth2_module: MockOAuth,
-          options: [oauth2_module: MockOAuth, callback_url: "https://example.com/auth/evesso/callback"]
+          options: [
+            oauth2_module: MockOAuth,
+            callback_url: "https://example.com/auth/evesso/callback"
+          ]
         )
 
       result = EVESSO.handle_request!(conn)
