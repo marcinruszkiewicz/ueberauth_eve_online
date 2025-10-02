@@ -37,7 +37,7 @@ defmodule UeberauthEveOnline.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:quokka, "~> 2.11", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.22", only: [:dev, :test], runtime: false},
-      {:mox, "~> 1.0", only: :test},
+      {:mox, "~> 1.2", only: :test},
       {:plug_cowboy, "~> 2.0", only: :test},
 
       # docs dependencies
